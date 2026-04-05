@@ -32,7 +32,7 @@ An open-source **workspace & project management platform** to manage teams, task
 * 👥 **User Management**
   Invite members, assign roles, and manage access.
 
-* 🔐 **Authentication System** *(optional / if implemented)*
+* 🔐 **Authentication System** 
   Secure login and user sessions.
 
 ---
