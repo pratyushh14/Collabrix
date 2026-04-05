@@ -4,7 +4,9 @@ import sendEmail from "../configs/nodemailer.js";
 
 export const inngest = new Inngest({ id: "Collabrix" });
 
-// ✅ USER CREATE
+/* ================= USERS ================= */
+
+// ✅ USER CREATE (safe)
 const syncUserCreation = inngest.createFunction(
   {
     id: "sync-user-from-clerk",
@@ -14,8 +16,10 @@ const syncUserCreation = inngest.createFunction(
     const { data } = event;
 
     await step.run("create-user", async () => {
-      await prisma.user.create({
-        data: {
+      await prisma.user.upsert({
+        where: { id: data.id },
+        update: {},
+        create: {
           id: data.id,
           email: data?.email_addresses?.[0]?.email_address,
           name: `${data?.first_name || ""} ${data?.last_name || ""}`,
@@ -65,7 +69,9 @@ const syncUserUpdation = inngest.createFunction(
   }
 );
 
-// ✅ WORKSPACE CREATE
+/* ================= WORKSPACE ================= */
+
+// ✅ CREATE OR UPDATE WORKSPACE (IMPORTANT FIX)
 const syncWorkspaceCreation = inngest.createFunction(
   {
     id: "sync-workspace-from-clerk",
@@ -74,9 +80,15 @@ const syncWorkspaceCreation = inngest.createFunction(
   async ({ event, step }) => {
     const { data } = event;
 
-    await step.run("create-workspace", async () => {
-      await prisma.workspace.create({
-        data: {
+    await step.run("upsert-workspace", async () => {
+      await prisma.workspace.upsert({
+        where: { id: data.id },
+        update: {
+          name: data.name,
+          slug: data.slug,
+          image_url: data.image_url,
+        },
+        create: {
           id: data.id,
           name: data.name,
           slug: data.slug,
@@ -86,9 +98,17 @@ const syncWorkspaceCreation = inngest.createFunction(
       });
     });
 
-    await step.run("create-admin-member", async () => {
-      await prisma.workspaceMember.create({
-        data: {
+    // ✅ ensure owner is member
+    await step.run("upsert-admin-member", async () => {
+      await prisma.workspaceMember.upsert({
+        where: {
+          userId_workspaceId: {
+            userId: data.created_by,
+            workspaceId: data.id,
+          },
+        },
+        update: {},
+        create: {
           userId: data.created_by,
           workspaceId: data.id,
           role: "ADMIN",
@@ -137,7 +157,9 @@ const syncWorkspaceDeletion = inngest.createFunction(
   }
 );
 
-// ✅ MEMBER CREATE
+/* ================= MEMBERS ================= */
+
+// ✅ MEMBER CREATE (CRITICAL FIX)
 const syncWorkspaceMemberCreation = inngest.createFunction(
   {
     id: "sync-workspace-member-from-clerk",
@@ -146,19 +168,34 @@ const syncWorkspaceMemberCreation = inngest.createFunction(
   async ({ event, step }) => {
     const { data } = event;
 
-    await step.run("create-member", async () => {
-      await prisma.workspaceMember.create({
-        data: {
+    console.log("🔥 MEMBER EVENT:", data);
+
+    await step.run("upsert-member", async () => {
+      const rawRole = String(data.role).toUpperCase();
+      const definedRole = rawRole.includes("ADMIN") ? "ADMIN" : "MEMBER";
+      
+      await prisma.workspaceMember.upsert({
+        where: {
+          userId_workspaceId: {
+            userId: data.public_user_data.user_id, // ✅ FIXED
+            workspaceId: data.organization.id,
+          },
+        },
+        update: {
+          role: definedRole,
+        },
+        create: {
           userId: data.public_user_data.user_id,
           workspaceId: data.organization.id,
-          role: String(data.role).toUpperCase(),
+          role: definedRole,
         },
       });
     });
   }
 );
 
-// ✅ TASK EMAIL
+/* ================= EMAIL ================= */
+
 const syncTaskAssignmentEmail = inngest.createFunction(
   {
     id: "send-email-on-task-assignment",
@@ -166,7 +203,7 @@ const syncTaskAssignmentEmail = inngest.createFunction(
     triggers: [{ event: "app/task.assigned" }],
   },
   async ({ event, step }) => {
-    const { taskId,origin} = event.data;
+    const { taskId } = event.data;
 
     const task = await step.run("fetch-task", async () => {
       const task = await prisma.task.findUnique({
@@ -175,7 +212,7 @@ const syncTaskAssignmentEmail = inngest.createFunction(
       });
 
       if (!task) throw new Error(`Task ${taskId} not found`);
-      if (!task.assignee) throw new Error(`Task ${taskId} has no assignee`);
+      if (!task.assignee) throw new Error(`No assignee`);
 
       return task;
     });
@@ -183,46 +220,17 @@ const syncTaskAssignmentEmail = inngest.createFunction(
     await step.run("send-email", async () => {
       await sendEmail({
         to: task.assignee.email,
-        subject: `New Task Assigned: ${task.project.name} - ${task.title}`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto;">
-            <h2 style="color:#4F46E5;">New Task Assigned</h2>
-            <p>Hi ${task.assignee.name},</p>
-            <p>You have been assigned a task in <b>${task.project.name}</b>.</p>
-
-            <div style="background:#F3F4F6;padding:16px;border-radius:8px;">
-              <p><b>Task:</b> ${task.title}</p>
-              <p><b>Priority:</b> ${task.priority}</p>
-              <p><b>Status:</b> ${task.status}</p>
-              ${
-                task.due_date
-                  ? `<p><b>Due:</b> ${new Date(task.due_date).toDateString()}</p>`
-                  : ""
-              }
-              ${
-                task.description
-                  ? `<p><b>Description:</b> ${task.description}</p>`
-                  : ""
-              }
-            </div>
-
-            <p style="font-size:12px;color:#777;">
-              Collabrix automated email
-            </p>
-          </div>
-        `,
+        subject: `New Task: ${task.project.name} - ${task.title}`,
+        html: `<p>You have a new task: ${task.title}</p>`,
       });
     });
 
-    return {
-      success: true,
-      taskId,
-      assigneeEmail: task.assignee.email,
-    };
+    return { success: true };
   }
 );
 
-// ✅ EXPORT ALL
+/* ================= EXPORT ================= */
+
 export const functions = [
   syncUserCreation,
   syncUserDeletion,

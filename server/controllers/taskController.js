@@ -37,12 +37,13 @@ export const createTask = async (req, res) => {
             where: { id: task.id },
             include: { assignee: true }
         });
-        await inngest.send({
-            name: "app/task.assigned",
-            data: {
-                taskId: task.id,origin
-            },
-        });         
+
+        if (taskWithAssignee?.assignee) {
+            await inngest.send({
+                name: "app/task.assigned",
+                data: { taskId: task.id },
+            });
+        }
 
         res.json({ task: taskWithAssignee, message: "Task created successfully" });
     } catch (error) {

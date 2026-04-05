@@ -56,7 +56,7 @@ export const createProject = async (req, res) => {
             where: { id: project.id },
             include: {
                 members: { include: { user: true } },
-                tasks: { include: { assignees: true, comments: { include: { user: true } } } },
+                tasks: { include: { assignee: true, comments: { include: { user: true } } } },
                 owner: true
             }
         });
@@ -147,7 +147,7 @@ export const updateProject = async (req, res) => {
             where: { id },
             include: {
                 members: { include: { user: true } },
-                tasks: { include: { assignees: true, comments: { include: { user: true } } } },
+                tasks: { include: { assignee: true, comments: { include: { user: true } } } },
                 owner: true
             }
         });
@@ -173,7 +173,15 @@ export const addMember = async (req, res) => {
         if (!project) {
             return res.status(404).json({ message: "Project not found" });
         }
-        if (project.team_lead !== userId) {
+
+        // Allow team lead OR workspace admin to add members
+        const isTeamLead = project.team_lead === userId;
+        const workspaceMemberRecord = await prisma.workspaceMember.findFirst({
+            where: { workspaceId: project.workspaceId, userId }
+        });
+        const isAdmin = workspaceMemberRecord?.role === 'ADMIN';
+
+        if (!isTeamLead && !isAdmin) {
             return res.status(403).json({ message: "You are not authorized to add members to this project" });
         }
 

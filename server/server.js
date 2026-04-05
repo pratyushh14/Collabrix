@@ -15,7 +15,7 @@ import prisma from './configs/prisma.js';
 const app = express();
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://your-vercel-app.vercel.app'],
+    origin: ['http://localhost:5173', 'https://collabrix-ruby.vercel.app'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -82,11 +82,35 @@ app.post('/api/clerk/webhook', express.raw({ type: 'application/json' }), async 
         } else if (type === 'organization.deleted') {
             await prisma.workspace.delete({ where: { id: data.id } });
         } else if (type === 'organizationMembership.created') {
-            await prisma.workspaceMember.create({
-                data: {
-                    userId: data.public_user_data.user_id,
+            const userId = data.public_user_data.user_id;
+            // Ensure user exists before creating membership to avoid FK errors
+            const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+            if (!existingUser) {
+                await prisma.user.create({
+                    data: {
+                        id: userId,
+                        email: data.public_user_data.identifier,
+                        name: data.public_user_data.first_name ? `${data.public_user_data.first_name} ${data.public_user_data.last_name || ""}` : data.public_user_data.identifier,
+                        image: data.public_user_data.image_url,
+                    }
+                });
+            }
+
+            const rawRole = String(data.role).toUpperCase();
+            const definedRole = rawRole.includes("ADMIN") ? "ADMIN" : "MEMBER";
+
+            await prisma.workspaceMember.upsert({
+                where: {
+                    userId_workspaceId: {
+                        userId: userId,
+                        workspaceId: data.organization.id,
+                    }
+                },
+                update: { role: definedRole },
+                create: {
+                    userId: userId,
                     workspaceId: data.organization.id,
-                    role: String(data.role).toUpperCase(),
+                    role: definedRole,
                 },
             });
         }
