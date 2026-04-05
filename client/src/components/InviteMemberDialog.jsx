@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { Mail, UserPlus } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { useOrganization, useAuth } from "@clerk/react";
+import toast from "react-hot-toast";
+import { fetchWorkspaces } from "../features/workspaceSlice";
 
 const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
-
+    const dispatch = useDispatch();
+    const { getToken } = useAuth();
+    const { organization } = useOrganization();
     const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
@@ -13,7 +18,26 @@ const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
+        try {
+            await organization.inviteMember({
+                emailAddress: formData.email,
+                role: formData.role,
+            });
+
+            toast.success("Invitation sent successfully! They will appear once they accept the invite.");
+            setFormData({ email: "", role: "org:member" });
+            setIsDialogOpen(false);
+
+            // Refresh workspace data so any previously accepted invites are shown
+            dispatch(fetchWorkspaces({ getToken }));
+        } catch (error) {
+            console.log(error);
+            toast.error(error?.errors?.[0]?.message || error.message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!isDialogOpen) return null;
@@ -31,6 +55,9 @@ const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
                             Inviting to workspace: <span className="text-blue-600 dark:text-blue-400">{currentWorkspace.name}</span>
                         </p>
                     )}
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                        An email invitation will be sent. They will appear in your team once they accept.
+                    </p>
                 </div>
 
                 {/* Form */}

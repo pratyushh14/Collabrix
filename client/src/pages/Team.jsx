@@ -1,22 +1,49 @@
-import { useEffect, useState } from "react";
-import { UsersIcon, Search, UserPlus, Shield, Activity } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { UsersIcon, Search, UserPlus, Shield, Activity, RefreshCw } from "lucide-react";
 import InviteMemberDialog from "../components/InviteMemberDialog";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { syncWorkspaceMembersThunk } from "../features/workspaceSlice";
+import { useAuth } from "@clerk/react";
 
 const Team = () => {
 
     const [tasks, setTasks] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [users, setUsers] = useState([]);
     const currentWorkspace = useSelector((state) => state?.workspace?.currentWorkspace || null);
     const projects = currentWorkspace?.projects || [];
+    const dispatch = useDispatch();
+    const { getToken } = useAuth();
 
     const filteredUsers = users.filter(
         (user) =>
             user?.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user?.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const hasSyncedForId = useRef(null);
+
+    const handleSync = useCallback(async () => {
+        if (!currentWorkspace?.id) return;
+        setIsSyncing(true);
+        try {
+            await dispatch(syncWorkspaceMembersThunk({ workspaceId: currentWorkspace.id, getToken })).unwrap();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsSyncing(false);
+        }
+    }, [currentWorkspace?.id, dispatch, getToken]);
+
+    // Active sync on load only once per workspace ID
+    useEffect(() => {
+        if (currentWorkspace?.id && hasSyncedForId.current !== currentWorkspace.id) {
+            hasSyncedForId.current = currentWorkspace.id;
+            handleSync();
+        }
+    }, [currentWorkspace?.id, handleSync]);
 
     useEffect(() => {
         setUsers(currentWorkspace?.members || []);
@@ -33,9 +60,15 @@ const Team = () => {
                         Manage team members and their contributions
                     </p>
                 </div>
-                <button onClick={() => setIsDialogOpen(true)} className="flex items-center px-5 py-2 rounded text-sm bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white transition" >
-                    <UserPlus className="w-4 h-4 mr-2" /> Invite Member
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={handleSync} disabled={isSyncing} className="flex items-center px-4 py-2 rounded text-sm border border-gray-300 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 transition" >
+                        <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} /> 
+                        {isSyncing ? "Syncing..." : "Sync Members"}
+                    </button>
+                    <button onClick={() => setIsDialogOpen(true)} className="flex items-center px-5 py-2 rounded text-sm bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white transition" >
+                        <UserPlus className="w-4 h-4 mr-2" /> Invite Member
+                    </button>
+                </div>
                 <InviteMemberDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
             </div>
 

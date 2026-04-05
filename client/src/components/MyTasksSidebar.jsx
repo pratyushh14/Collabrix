@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { CheckSquareIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { useSelector } from 'react-redux';
+import { useUser } from '@clerk/react';
 import { Link } from 'react-router-dom';
 
 function MyTasksSidebar() {
-
-    const user = { id: 'user_1' }
-
+    const { user: clerkUser } = useUser();
     const { currentWorkspace } = useSelector((state) => state.workspace);
     const [showMyTasks, setShowMyTasks] = useState(false);
     const [myTasks, setMyTasks] = useState([]);
@@ -26,19 +25,18 @@ function MyTasksSidebar() {
         }
     };
 
-    const fetchUserTasks = () => {
-        const userId = user?.id || '';
+    const fetchUserTasks = useCallback(() => {
+        const userId = clerkUser?.id;
         if (!userId || !currentWorkspace) return;
         const currentWorkspaceTasks = currentWorkspace.projects.flatMap((project) => {
-            return project.tasks.filter((task) => task?.assignee?.id === userId);
+            return project.tasks.filter((task) => task?.assigneeId === userId);
         });
-
         setMyTasks(currentWorkspaceTasks);
-    }
+    }, [clerkUser?.id, currentWorkspace]);
 
     useEffect(() => {
-        fetchUserTasks()
-    }, [currentWorkspace])
+        fetchUserTasks();
+    }, [fetchUserTasks]);
 
     return (
         <div className="mt-6 px-3">
@@ -62,7 +60,7 @@ function MyTasksSidebar() {
                     <div className="space-y-1">
                         {myTasks.length === 0 ? (
                             <div className="px-3 py-2 text-xs text-gray-500 dark:text-zinc-500 text-center">
-                                No tasks assigned
+                                No tasks assigned to you
                             </div>
                         ) : (
                             myTasks.map((task, index) => (

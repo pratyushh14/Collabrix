@@ -1,25 +1,56 @@
 import { useState } from "react";
 import { Mail, UserPlus } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
+import { useAuth } from "@clerk/react";
+import toast from "react-hot-toast";
+import api from "../configs/api";
+import { addProjectMember } from "../features/workspaceSlice";
 
 const AddProjectMember = ({ isDialogOpen, setIsDialogOpen }) => {
-
+    const dispatch = useDispatch();
+    const { getToken } = useAuth();
     const [searchParams] = useSearchParams();
-
     const id = searchParams.get('id');
 
     const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
-
     const project = currentWorkspace?.projects.find((p) => p.id === id);
-    const projectMembersEmails = project?.members.map((member) => member.user.email);
+    const projectMembersEmails = project?.members.map((member) => member.user.email) || [];
 
     const [email, setEmail] = useState('');
     const [isAdding, setIsAdding] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+        if (!email) return;
+        try {
+            setIsAdding(true);
+            const { data } = await api.post(
+                `/api/projects/${id}/addmember`,
+                { email },
+                { headers: { Authorization: `Bearer ${await getToken()}` } }
+            );
+            // Build a member object matching the workspace shape for immediate UI update
+            const addedUser = currentWorkspace.members.find(m => m.user.email === email);
+            if (addedUser) {
+                dispatch(addProjectMember({
+                    projectId: id,
+                    member: {
+                        id: data.member.id,
+                        userId: addedUser.user.id,
+                        projectId: id,
+                        user: addedUser.user,
+                    }
+                }));
+            }
+            toast.success("Member added to project!");
+            setEmail('');
+            setIsDialogOpen(false);
+        } catch (error) {
+            toast.error(error?.response?.data?.message || error.message);
+        } finally {
+            setIsAdding(false);
+        }
     };
 
     if (!isDialogOpen) return null;
@@ -34,7 +65,7 @@ const AddProjectMember = ({ isDialogOpen, setIsDialogOpen }) => {
                     </h2>
                     {currentWorkspace && (
                         <p className="text-sm text-zinc-700 dark:text-zinc-400">
-                            Adding to Project: <span className="text-blue-600 dark:text-blue-400">{project.name}</span>
+                            Adding to Project: <span className="text-blue-600 dark:text-blue-400">{project?.name}</span>
                         </p>
                     )}
                 </div>
@@ -48,7 +79,7 @@ const AddProjectMember = ({ isDialogOpen, setIsDialogOpen }) => {
                         </label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 w-4 h-4" />
-                            {/* List All non project members from current workspace */}
+                            {/* List all workspace members not already in project */}
                             <select value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 mt-1 w-full rounded border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200 text-sm placeholder-zinc-400 dark:placeholder-zinc-500 py-2 focus:outline-none focus:border-blue-500" required >
                                 <option value="">Select a member</option>
                                 {currentWorkspace?.members
@@ -65,7 +96,7 @@ const AddProjectMember = ({ isDialogOpen, setIsDialogOpen }) => {
                         <button type="button" onClick={() => setIsDialogOpen(false)} className="px-5 py-2 text-sm rounded border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition" >
                             Cancel
                         </button>
-                        <button type="submit" disabled={isAdding || !currentWorkspace} className="px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white disabled:opacity-50 transition" >
+                        <button type="submit" disabled={isAdding || !currentWorkspace || !email} className="px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white disabled:opacity-50 transition" >
                             {isAdding ? "Adding..." : "Add Member"}
                         </button>
                     </div>

@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { useAuth } from "@clerk/react";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
+import api from "../configs/api";
+import { addTask } from "../features/workspaceSlice";
 
 export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, projectId }) {
+    const dispatch = useDispatch();
+    const { getToken } = useAuth();
     const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
     const project = currentWorkspace?.projects.find((p) => p.id === projectId);
     const teamMembers = project?.members || [];
@@ -21,8 +27,31 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-
+        try {
+            setIsSubmitting(true);
+            const { data } = await api.post(
+                "/api/tasks",
+                {
+                    projectId,
+                    title: formData.title,
+                    description: formData.description,
+                    type: formData.type,
+                    status: formData.status,
+                    priority: formData.priority,
+                    assigneeId: formData.assigneeId || null,
+                    due_date: formData.due_date || null,
+                },
+                { headers: { Authorization: `Bearer ${await getToken()}` } }
+            );
+            dispatch(addTask(data.task));
+            toast.success("Task created successfully!");
+            setShowCreateTask(false);
+            setFormData({ title: "", description: "", type: "TASK", status: "TODO", priority: "MEDIUM", assigneeId: "", due_date: "" });
+        } catch (error) {
+            toast.error(error?.response?.data?.message || error.message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return showCreateTask ? (
@@ -58,7 +87,7 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
 
                         <div className="space-y-1">
                             <label className="text-sm font-medium">Priority</label>
-                            <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1"                             >
+                            <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1">
                                 <option value="LOW">Low</option>
                                 <option value="MEDIUM">Medium</option>
                                 <option value="HIGH">High</option>
@@ -92,7 +121,7 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
 
                     {/* Due Date */}
                     <div className="space-y-1">
-                        <label className="text-sm font-medium">Due Date</label>
+                        <label className="text-sm font-medium">Due Date <span className="text-zinc-400 font-normal">(optional)</span></label>
                         <div className="flex items-center gap-2">
                             <CalendarIcon className="size-5 text-zinc-500 dark:text-zinc-400" />
                             <input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} min={new Date().toISOString().split('T')[0]} className="w-full rounded dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 px-3 py-2 text-zinc-900 dark:text-zinc-200 text-sm mt-1" />
@@ -109,7 +138,7 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
                         <button type="button" onClick={() => setShowCreateTask(false)} className="rounded border border-zinc-300 dark:border-zinc-700 px-5 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition" >
                             Cancel
                         </button>
-                        <button type="submit" disabled={isSubmitting} className="rounded px-5 py-2 text-sm bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white dark:text-zinc-200 transition" >
+                        <button type="submit" disabled={isSubmitting} className="rounded px-5 py-2 text-sm bg-gradient-to-br from-blue-500 to-blue-600 hover:opacity-90 text-white dark:text-zinc-200 transition disabled:opacity-50" >
                             {isSubmitting ? "Creating..." : "Create Task"}
                         </button>
                     </div>

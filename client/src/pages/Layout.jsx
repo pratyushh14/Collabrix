@@ -18,13 +18,13 @@ const Layout = () => {
 
     useEffect(() => {
         dispatch(loadTheme())
-    }, [])
+    }, [dispatch])
 
     useEffect(() => {
         if (isLoaded && user && !hasFetched) {
             dispatch(fetchWorkspaces({ getToken }))
         }
-    }, [isLoaded, user, hasFetched])
+    }, [isLoaded, user, hasFetched, dispatch, getToken])
 
     useEffect(() => {
         if (organization?.id && hasFetched) {
@@ -32,9 +32,9 @@ const Layout = () => {
                 dispatch(fetchWorkspaces({ getToken }))
             }, 3000)
         }
-    }, [organization?.id])
+    }, [organization?.id, dispatch, getToken, hasFetched])
 
-    if (!isLoaded || loading) return (
+    if (!isLoaded || (loading && !hasFetched)) return (
         <div className='flex items-center justify-center h-screen bg-white dark:bg-zinc-950'>
             <Loader2Icon className="size-7 text-blue-500 animate-spin" />
         </div>

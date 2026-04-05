@@ -1,15 +1,16 @@
 import { FolderOpen, CheckCircle, Users, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import { useUser } from "@clerk/react";
 
 export default function StatsGrid() {
+    const { user: clerkUser } = useUser();
     const currentWorkspace = useSelector(
         (state) => state?.workspace?.currentWorkspace || null
     );
 
     const [stats, setStats] = useState({
         totalProjects: 0,
-        activeProjects: 0,
         completedProjects: 0,
         myTasks: 0,
         overdueIssues: 0,
@@ -20,7 +21,7 @@ export default function StatsGrid() {
             icon: FolderOpen,
             title: "Total Projects",
             value: stats.totalProjects,
-            subtitle: `projects in ${currentWorkspace?.name}`,
+            subtitle: `projects in ${currentWorkspace?.name || "workspace"}`,
             bgColor: "bg-blue-500/10",
             textColor: "text-blue-500",
         },
@@ -51,35 +52,32 @@ export default function StatsGrid() {
     ];
 
     useEffect(() => {
-        if (currentWorkspace) {
+        if (currentWorkspace && clerkUser) {
+            const now = new Date();
+            const allTasks = currentWorkspace.projects.flatMap((p) => p.tasks);
+
             setStats({
                 totalProjects: currentWorkspace.projects.length,
-                activeProjects: currentWorkspace.projects.filter(
-                    (p) => p.status !== "CANCELLED" && p.status !== "COMPLETED"
+                // Fixed: count completed projects, not tasks in completed projects
+                completedProjects: currentWorkspace.projects.filter(
+                    (p) => p.status === "COMPLETED"
                 ).length,
-                completedProjects: currentWorkspace.projects
-                    .filter((p) => p.status === "COMPLETED")
-                    .reduce((acc, project) => acc + project.tasks.length, 0),
-                myTasks: currentWorkspace.projects.reduce(
-                    (acc, project) =>
-                        acc +
-                        project.tasks.filter(
-                            (t) => t.assignee?.email === currentWorkspace.owner.email
-                        ).length,
-                    0
-                ),
-                overdueIssues: currentWorkspace.projects.reduce(
-                    (acc, project) =>
-                        acc + project.tasks.filter((t) => t.due_date < new Date()).length,
-                    0
-                ),
+                // Fixed: use clerkUser.id to match assigneeId in task
+                myTasks: allTasks.filter(
+                    (t) => t.assigneeId === clerkUser.id
+                ).length,
+                // Fixed: compare date objects properly
+                overdueIssues: allTasks.filter(
+                    (t) => t.due_date && new Date(t.due_date) < now && t.status !== "DONE"
+                ).length,
             });
         }
-    }, [currentWorkspace]);
+    }, [currentWorkspace, clerkUser]);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 my-9">
             {statCards.map(
+                // eslint-disable-next-line no-unused-vars
                 ({ icon: Icon, title, value, subtitle, bgColor, textColor }, i) => (
                     <div key={i} className="bg-white dark:bg-zinc-950 dark:bg-gradient-to-br dark:from-zinc-800/70 dark:to-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition duration-200 rounded-md" >
                         <div className="p-6 py-4">

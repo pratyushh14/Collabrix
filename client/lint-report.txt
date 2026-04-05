@@ -1,0 +1,44 @@
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\AddProjectMember.jsx
+Line 18: 'setIsAdding' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\CreateProjectDialog.jsx
+Line 6: 'getToken' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\CreateTaskDialog.jsx
+Line 11: 'setIsSubmitting' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\InviteMemberDialog.jsx
+Line 4: 'set' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\MyTasksSidebar.jsx
+Line 41: React Hook useEffect has a missing dependency: 'fetchUserTasks'. Either include it or remove the dependency array. [react-hooks/exhaustive-deps]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\Navbar.jsx
+Line 5: 'assets' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\ProjectAnalytics.jsx
+Line 44: '_' is defined but never used. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\ProjectSettings.jsx
+Line 19: 'setIsSubmitting' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\RecentActivity.jsx
+Line 34: React Hook useEffect has a missing dependency: 'getTasksFromCurrentWorkspace'. Either include it or remove the dependency array. [react-hooks/exhaustive-deps]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\StatsGrid.jsx
+Line 83: 'Icon' is defined but never used. [no-unused-vars]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\components\WorkspaceDropdown.jsx
+Line 68: React Hook useEffect has a missing dependency: 'setActive'. Either include it or remove the dependency array. [react-hooks/exhaustive-deps]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\pages\Layout.jsx
+Line 21: React Hook useEffect has a missing dependency: 'dispatch'. Either include it or remove the dependency array. [react-hooks/exhaustive-deps]
+Line 27: React Hook useEffect has missing dependencies: 'dispatch' and 'getToken'. Either include them or remove the dependency array. [react-hooks/exhaustive-deps]
+Line 35: React Hook useEffect has missing dependencies: 'dispatch', 'getToken', and 'hasFetched'. Either include them or remove the dependency array. [react-hooks/exhaustive-deps]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\pages\Projects.jsx
+Line 47: React Hook useEffect has a missing dependency: 'filterProjects'. Either include it or remove the dependency array. [react-hooks/exhaustive-deps]
+
+### C:\Users\pratyush\OneDrive\Desktop\project_x\project-management\client\src\pages\TaskDetails.jsx
+Line 66: React Hook useEffect has a missing dependency: 'fetchTaskDetails'. Either include it or remove the dependency array. [react-hooks/exhaustive-deps]

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { GitCommit, MessageSquare, Clock, Bug, Zap, Square } from "lucide-react";
 import { format } from "date-fns";
 import { useSelector } from "react-redux";
@@ -21,17 +21,17 @@ const RecentActivity = () => {
     const [tasks, setTasks] = useState([]);
     const { currentWorkspace } = useSelector((state) => state.workspace);
 
-    const getTasksFromCurrentWorkspace = () => {
+    const getTasksFromCurrentWorkspace = useCallback(() => {
 
         if (!currentWorkspace) return;
 
         const tasks = currentWorkspace.projects.flatMap((project) => project.tasks.map((task) => task));
         setTasks(tasks);
-    };
+    }, [currentWorkspace]);
 
     useEffect(() => {
         getTasksFromCurrentWorkspace();
-    }, [currentWorkspace]);
+    }, [getTasksFromCurrentWorkspace]);
 
     return (
         <div className="bg-white dark:bg-zinc-950 dark:bg-gradient-to-br dark:from-zinc-800/70 dark:to-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-lg transition-all overflow-hidden">
