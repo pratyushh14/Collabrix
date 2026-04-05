@@ -24,6 +24,7 @@ const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
             await organization.inviteMember({
                 emailAddress: formData.email,
                 role: formData.role,
+                redirectUrl: "https://collabrix-ruby.vercel.app",
             });
 
             toast.success("Invitation sent successfully! They will appear once they accept the invite.");
